@@ -3,7 +3,18 @@ const router = express.Router();
 const Product = require('../models/productModel');
 const auth = require('../middleware/authMiddleware');
 
-// Create product (Vendor)
+// ✅ Get products for cashier's shop – put this ABOVE `/:shopId`
+router.get('/shop', auth('cashier'), async (req, res) => {
+  try {
+    console.log('Cashier JWT payload:', req.user);
+    const products = await Product.find({ shopId: req.user.shopId });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Create product (Vendor)
 router.post('/', auth('vendor'), async (req, res) => {
   const { name, price, quantity, shopId } = req.body;
   try {
@@ -14,7 +25,7 @@ router.post('/', auth('vendor'), async (req, res) => {
   }
 });
 
-// Get all products for a shop (Vendor)
+// ✅ Get all products for a specific shop (Vendor)
 router.get('/:shopId', auth('vendor'), async (req, res) => {
   try {
     const products = await Product.find({ shopId: req.params.shopId });
@@ -24,7 +35,7 @@ router.get('/:shopId', auth('vendor'), async (req, res) => {
   }
 });
 
-// Update product (Vendor)
+// ✅ Update product (Vendor)
 router.put('/:id', auth('vendor'), async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -34,7 +45,7 @@ router.put('/:id', auth('vendor'), async (req, res) => {
   }
 });
 
-// Delete product (Vendor)
+// ✅ Delete product (Vendor)
 router.delete('/:id', auth('vendor'), async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
@@ -45,4 +56,3 @@ router.delete('/:id', auth('vendor'), async (req, res) => {
 });
 
 module.exports = router;
-

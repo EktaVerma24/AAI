@@ -8,6 +8,7 @@ const cashierRoutes = require('./routes/cashierRoutes');
 const productRoutes = require('./routes/productRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const path = require('path');
 
 
 const app = express();
@@ -19,6 +20,8 @@ app.use('/api/cashiers', cashierRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/invoices', express.static(path.join(__dirname, 'invoices')));
+
 
 
 

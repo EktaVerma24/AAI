@@ -9,6 +9,8 @@ const billSchema = new mongoose.Schema({
     }
   ],
   total: Number,
+  customerName: String,
+  customerPhone: String,
   cashierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Cashier' },
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop' },
   createdAt: { type: Date, default: Date.now }

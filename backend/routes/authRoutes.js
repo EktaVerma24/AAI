@@ -20,14 +20,18 @@ router.post('/cashier/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, cashier.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
-    const token = jwt.sign({ id: cashier._id, role: 'cashier' }, process.env.JWT_SECRET, {
-      expiresIn: '7d'
-    });
+    // ✅ Include role and shopId in the token
+    const token = jwt.sign(
+      { id: cashier._id, role: 'cashier', shopId: cashier.shopId },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.json({ token, cashier });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
+
 
 module.exports = router;
