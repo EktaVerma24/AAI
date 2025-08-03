@@ -64,7 +64,16 @@ const CashierDashboard = () => {
   );
 
   return (
-    <div className="min-h-screen p-8 bg-gray-50">
+    <div className="min-h-screen relative p-8 bg-gray-100">
+      <button
+        className="absolute top-4 right-6 bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700"
+        onClick={() => {
+          localStorage.clear();
+          window.location.href = '/';
+        }}
+      >
+        Logout
+      </button>
       <h1 className="text-3xl font-bold text-blue-700 mb-6">Cashier Dashboard</h1>
 
       {message && <p className="text-green-600 mb-4">{message}</p>}

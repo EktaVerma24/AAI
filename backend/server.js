@@ -9,10 +9,14 @@ const productRoutes = require('./routes/productRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const path = require('path');
+// const cors = require('cors');
 
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // or frontend domain
+  credentials: true
+}));
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/shops', shopRoutes);

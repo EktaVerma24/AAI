@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../utils/api';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 
 const VendorDashboard = () => {
   const [shops, setShops] = useState([]);
@@ -11,6 +12,9 @@ const VendorDashboard = () => {
   const [cashier, setCashier] = useState({ name: '', email: '', password: '' });
   const [messages, setMessages] = useState({});
   const [cashiersByShop, setCashiersByShop] = useState({});
+  const [billsByShop, setBillsByShop] = useState({});
+  const [productsByShop, setProductsByShop] = useState({});
+  const [viewOption, setViewOption] = useState({});
 
   useEffect(() => {
     fetchShops();
@@ -31,6 +35,25 @@ const VendorDashboard = () => {
       setCashiersByShop((prev) => ({ ...prev, [shopId]: res.data }));
     } catch (err) {
       console.error('Failed to fetch cashiers');
+    }
+  };
+
+  const fetchBills = async (shopId) => {
+    try {
+      const res = await API.get('/billing/vendor');
+      const shopBills = res.data.filter(b => b.shopId === shopId);
+      setBillsByShop((prev) => ({ ...prev, [shopId]: shopBills }));
+    } catch (err) {
+      console.error('Failed to fetch bills');
+    }
+  };
+
+  const fetchProductsForShop = async (shopId) => {
+    try {
+      const res = await API.get(`/products/${shopId}`);
+      setProductsByShop((prev) => ({ ...prev, [shopId]: res.data }));
+    } catch (err) {
+      console.error('Failed to fetch products');
     }
   };
 
@@ -56,16 +79,16 @@ const VendorDashboard = () => {
 
   const handleAddProduct = async (shopId) => {
     try {
-      const res = await API.post('/products', {
+      await API.post('/products', {
         ...product,
         price: Number(product.price),
         quantity: Number(product.quantity),
         shopId
       });
-      setMessages((prev) => ({ ...prev, [shopId]: '✅ Product added successfully' }));
+      fetchProductsForShop(shopId);
       setProduct({ name: '', price: '', quantity: '' });
     } catch (err) {
-      setMessages((prev) => ({ ...prev, [shopId]: err.response?.data?.msg || '❌ Failed to add product' }));
+      alert('❌ Failed to add product');
     }
   };
 
@@ -73,10 +96,9 @@ const VendorDashboard = () => {
     try {
       await API.post('/cashiers', { ...cashier, shopId });
       fetchCashiers(shopId);
-      setMessages((prev) => ({ ...prev, ['cashier-' + shopId]: '✅ Cashier added successfully' }));
       setCashier({ name: '', email: '', password: '' });
     } catch (err) {
-      setMessages((prev) => ({ ...prev, ['cashier-' + shopId]: err.response?.data?.msg || '❌ Failed to add cashier' }));
+      alert('❌ Failed to add cashier');
     }
   };
 
@@ -90,19 +112,18 @@ const VendorDashboard = () => {
   };
 
   return (
-     <div className="min-h-screen relative p-8 bg-gray-100">
-    <button
-      className="absolute top-4 right-6 bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700"
-      onClick={() => {
-        localStorage.clear();
-        window.location.href = '/';
-      }}
-    >
-      Logout
-    </button>
+    <div className="min-h-screen relative p-8 bg-gray-100">
+      <button
+        className="absolute top-4 right-6 bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700"
+        onClick={() => {
+          localStorage.clear();
+          window.location.href = '/';
+        }}
+      >
+        Logout
+      </button>
       <h1 className="text-3xl font-bold text-blue-700 mb-6">Vendor Dashboard</h1>
 
-      {/* Create Shop */}
       <div className="max-w-md bg-white p-6 rounded shadow-md mb-8">
         <h2 className="text-xl font-semibold mb-4">Create Shop</h2>
         <form onSubmit={handleCreateShop} className="space-y-4">
@@ -134,128 +155,134 @@ const VendorDashboard = () => {
         {shopMessage && <p className="mt-4 text-green-600">{shopMessage}</p>}
       </div>
 
-      {/* List of Shops */}
-      <div className="space-y-6">
-        {shops.map((s) => (
-          <div key={s._id} className="bg-white p-6 rounded shadow-md">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-semibold">{s.name}</h3>
-                <p className="text-sm text-gray-500">{s.location}</p>
-              </div>
-              <button
-                className="text-blue-600 underline"
-                onClick={() => {
-                  if (selectedShopId === s._id) {
-                    setSelectedShopId(null);
-                  } else {
-                    setSelectedShopId(s._id);
-                    fetchCashiers(s._id);
-                  }
-                }}
-              >
-                {selectedShopId === s._id ? 'Close' : 'Manage'}
-              </button>
+      {shops.map((shop) => (
+        <div key={shop._id} className="bg-white p-6 rounded shadow-md mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-xl font-semibold">{shop.name}</h3>
+              <p className="text-sm text-gray-500">{shop.location}</p>
             </div>
+            <button
+              className="text-blue-600 underline"
+              onClick={() => {
+                setSelectedShopId(selectedShopId === shop._id ? null : shop._id);
+                if (!billsByShop[shop._id]) fetchBills(shop._id);
+                if (!productsByShop[shop._id]) fetchProductsForShop(shop._id);
+                if (!cashiersByShop[shop._id]) fetchCashiers(shop._id);
+              }}
+            >
+              {selectedShopId === shop._id ? 'Close' : 'Manage Shop'}
+            </button>
+          </div>
 
-            {selectedShopId === s._id && (
-              <div className="mt-6 space-y-6">
-                {/* Add Product */}
-                <div>
+          {selectedShopId === shop._id && (
+            <div className="mt-6">
+              <div className="mb-4 space-x-4">
+                <button
+                  className="bg-green-500 text-white px-3 py-1 rounded"
+                  onClick={() => setViewOption({ [shop._id]: 'product' })}
+                >
+                  ➕ Add Product
+                </button>
+                <button
+                  className="bg-purple-500 text-white px-3 py-1 rounded"
+                  onClick={() => setViewOption({ [shop._id]: 'cashier' })}
+                >
+                  👤 Add Cashier
+                </button>
+                <button
+                  className="bg-blue-500 text-white px-3 py-1 rounded"
+                  onClick={() => setViewOption({ [shop._id]: 'bills' })}
+                >
+                  🧾 View Bills
+                </button>
+                <button
+                  className="bg-yellow-500 text-white px-3 py-1 rounded"
+                  onClick={() => setViewOption({ [shop._id]: 'products' })}
+                >
+                  📦 View Products
+                </button>
+              </div>
+
+              {/* Conditionally Render Sections */}
+              {viewOption[shop._id] === 'product' && (
+                <div className="mb-6">
                   <h4 className="text-lg font-semibold mb-2">Add Product</h4>
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Product Name"
-                    value={product.name || ''}
-                    onChange={handleProductChange}
-                    className="w-full p-2 border rounded mb-2"
-                  />
-                  <input
-                    type="number"
-                    name="price"
-                    placeholder="Price"
-                    value={product.price || ''}
-                    onChange={handleProductChange}
-                    className="w-full p-2 border rounded mb-2"
-                  />
-                  <input
-                    type="number"
-                    name="quantity"
-                    placeholder="Quantity"
-                    value={product.quantity || ''}
-                    onChange={handleProductChange}
-                    className="w-full p-2 border rounded mb-2"
-                  />
-                  <button
-                    onClick={() => handleAddProduct(s._id)}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                  >
+                  <input type="text" name="name" placeholder="Product Name" value={product.name} onChange={handleProductChange} className="w-full p-2 border rounded mb-2" />
+                  <input type="number" name="price" placeholder="Price" value={product.price} onChange={handleProductChange} className="w-full p-2 border rounded mb-2" />
+                  <input type="number" name="quantity" placeholder="Quantity" value={product.quantity} onChange={handleProductChange} className="w-full p-2 border rounded mb-2" />
+                  <button onClick={() => handleAddProduct(shop._id)} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                     Add Product
                   </button>
-                  {messages[s._id] && <p className="text-green-600 mt-2">{messages[s._id]}</p>}
                 </div>
+              )}
 
-                {/* Add Cashier */}
-                <div>
+              {viewOption[shop._id] === 'cashier' && (
+                <div className="mb-6">
                   <h4 className="text-lg font-semibold mb-2">Add Cashier</h4>
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Cashier Name"
-                    value={cashier.name || ''}
-                    onChange={handleCashierChange}
-                    className="w-full p-2 border rounded mb-2"
-                  />
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    value={cashier.email || ''}
-                    onChange={handleCashierChange}
-                    className="w-full p-2 border rounded mb-2"
-                  />
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="Password"
-                    value={cashier.password || ''}
-                    onChange={handleCashierChange}
-                    className="w-full p-2 border rounded mb-2"
-                  />
-                  <button
-                    onClick={() => handleAddCashier(s._id)}
-                    className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                  >
+                  <input type="text" name="name" placeholder="Cashier Name" value={cashier.name} onChange={handleCashierChange} className="w-full p-2 border rounded mb-2" />
+                  <input type="email" name="email" placeholder="Email" value={cashier.email} onChange={handleCashierChange} className="w-full p-2 border rounded mb-2" />
+                  <input type="password" name="password" placeholder="Password" value={cashier.password} onChange={handleCashierChange} className="w-full p-2 border rounded mb-2" />
+                  <button onClick={() => handleAddCashier(shop._id)} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
                     Add Cashier
                   </button>
-                  {messages['cashier-' + s._id] && <p className="text-green-600 mt-2">{messages['cashier-' + s._id]}</p>}
-                </div>
 
-                {/* Cashier List */}
-                {cashiersByShop[s._id]?.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-semibold mt-4 mb-2">Cashiers</h4>
-                    <ul className="divide-y">
-                      {cashiersByShop[s._id].map((c) => (
-                        <li key={c._id} className="py-2 flex justify-between items-center">
-                          <span>{c.name} ({c.email})</span>
-                          <button
-                            onClick={() => handleRemoveCashier(c._id, s._id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Remove
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+                  {cashiersByShop[shop._id]?.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-md font-semibold mb-2">Cashiers</h4>
+                      <ul className="divide-y">
+                        {cashiersByShop[shop._id].map((c) => (
+                          <li key={c._id} className="py-2 flex justify-between items-center">
+                            <span>{c.name} ({c.email})</span>
+                            <button onClick={() => handleRemoveCashier(c._id, shop._id)} className="text-red-600 hover:underline">Remove</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {viewOption[shop._id] === 'bills' && billsByShop[shop._id] && (
+                <div className="mt-6">
+                  <h4 className="text-lg font-semibold mb-2">📊 Sales Chart</h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={billsByShop[shop._id].map(b => ({ id: b._id.slice(-5), total: b.total }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="id" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="total" fill="#3182CE" />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  <h4 className="text-lg font-semibold mt-6 mb-2">🧾 Bill Records</h4>
+                  <ul className="divide-y">
+                    {billsByShop[shop._id].map(b => (
+                      <li key={b._id} className="py-1">
+                        Bill #{b._id.slice(-5)} | ₹{b.total} | {new Date(b.createdAt).toLocaleString()} | Customer: {b.customerName || 'N/A'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {viewOption[shop._id] === 'products' && productsByShop[shop._id] && (
+                <div className="mt-6">
+                  <h4 className="text-lg font-semibold mb-2">📦 Products</h4>
+                  <ul className="divide-y">
+                    {productsByShop[shop._id].map(p => (
+                      <li key={p._id} className="py-1">
+                        {p.name} - ₹{p.price} (Qty: {p.quantity})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 };

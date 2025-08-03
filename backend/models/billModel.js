@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 const billSchema = new mongoose.Schema({
   items: [
     {
-      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product'
+      },
       quantity: Number,
       price: Number
     }
@@ -11,9 +14,17 @@ const billSchema = new mongoose.Schema({
   total: Number,
   customerName: String,
   customerPhone: String,
-  cashierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Cashier' },
-  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop' },
-  createdAt: { type: Date, default: Date.now }
+  shopId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Shop'
+  },
+  cashierId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Cashier'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
-
 module.exports = mongoose.model('Bill', billSchema);
