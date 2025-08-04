@@ -8,9 +8,11 @@ const CashierDashboard = () => {
   const [invoiceUrl, setInvoiceUrl] = useState('');
   const [search, setSearch] = useState('');
   const [customer, setCustomer] = useState({ name: '', phone: '' });
+  const [billHistory, setBillHistory] = useState([]);
 
   useEffect(() => {
     fetchProducts();
+    fetchBillHistory();
   }, []);
 
   const fetchProducts = async () => {
@@ -19,6 +21,15 @@ const CashierDashboard = () => {
       setProducts(res.data);
     } catch (err) {
       console.error('Failed to load products');
+    }
+  };
+
+  const fetchBillHistory = async () => {
+    try {
+      const res = await API.get('/billing/cashier');
+      setBillHistory(res.data);
+    } catch (err) {
+      console.error('Failed to fetch billing history');
     }
   };
 
@@ -46,14 +57,16 @@ const CashierDashboard = () => {
       const res = await API.post('/billing', {
         items: cart,
         customerName: customer.name,
-        customerPhone: customer.phone
+        customerPhone: customer.phone,
       });
+
       setMessage(res.data.msg);
       const backendBase = import.meta.env.VITE_BACKEND_URL;
       setInvoiceUrl(`${backendBase}${res.data.pdfPath}`);
       setCart([]);
       setCustomer({ name: '', phone: '' });
       fetchProducts();
+      fetchBillHistory(); // Refresh history
     } catch (err) {
       setMessage(err.response?.data?.msg || 'Billing failed');
     }
@@ -74,6 +87,7 @@ const CashierDashboard = () => {
       >
         Logout
       </button>
+
       <h1 className="text-3xl font-bold text-blue-700 mb-6">Cashier Dashboard</h1>
 
       {message && <p className="text-green-600 mb-4">{message}</p>}
@@ -82,7 +96,7 @@ const CashierDashboard = () => {
           href={invoiceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 underline"
+          className="text-blue-600 underline block mb-4"
         >
           📄 View Invoice
         </a>
@@ -129,22 +143,31 @@ const CashierDashboard = () => {
             placeholder="Customer Name"
             className="w-full p-2 border rounded mb-2"
             value={customer.name}
-            onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+            onChange={(e) =>
+              setCustomer({ ...customer, name: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Customer Phone"
             className="w-full p-2 border rounded mb-4"
             value={customer.phone}
-            onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+            onChange={(e) =>
+              setCustomer({ ...customer, phone: e.target.value })
+            }
           />
 
           <ul className="divide-y mb-4">
             {cart.map((item, idx) => {
               const product = products.find((p) => p._id === item.productId);
               return (
-                <li key={idx} className="py-2 flex justify-between items-center">
-                  <span>{product?.name || item.productId} × {item.quantity}</span>
+                <li
+                  key={idx}
+                  className="py-2 flex justify-between items-center"
+                >
+                  <span>
+                    {product?.name || item.productId} × {item.quantity}
+                  </span>
                   <button
                     className="text-red-600 hover:underline"
                     onClick={() => removeFromCart(item.productId)}
@@ -163,8 +186,52 @@ const CashierDashboard = () => {
           </button>
         </div>
       )}
+
+      {/* 🧾 Billing History Table */}
+      {billHistory.length > 0 && (
+        <div className="mt-12 bg-white p-6 rounded shadow-md">
+          <h2 className="text-xl font-semibold mb-4">🧾 Billing History</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border-collapse border border-gray-300">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-2 border">Bill ID</th>
+                  <th className="px-4 py-2 border">Customer</th>
+                  <th className="px-4 py-2 border">Date</th>
+                  <th className="px-4 py-2 border">Total</th>
+                  <th className="px-4 py-2 border">Invoice</th>
+                </tr>
+              </thead>
+              <tbody>
+                {billHistory.map((bill) => (
+                  <tr key={bill._id}>
+                    <td className="px-4 py-2 border">{bill._id.slice(-5)}</td>
+                    <td className="px-4 py-2 border">
+                      {bill.customerName || 'N/A'}
+                    </td>
+                    <td className="px-4 py-2 border">
+                      {new Date(bill.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 border">₹{bill.total}</td>
+                    <td className="px-4 py-2 border text-blue-600 underline">
+                      <a
+                        href={`${import.meta.env.VITE_BACKEND_URL}${bill.pdfPath}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View PDF
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default CashierDashboard;
+

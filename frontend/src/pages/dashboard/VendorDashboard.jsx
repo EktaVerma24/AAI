@@ -1,24 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../utils/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+} from 'recharts';
 
 const VendorDashboard = () => {
   const [shops, setShops] = useState([]);
   const [selectedShopId, setSelectedShopId] = useState(null);
   const [shopData, setShopData] = useState({ name: '', location: '' });
   const [shopMessage, setShopMessage] = useState('');
-
   const [product, setProduct] = useState({ name: '', price: '', quantity: '' });
   const [cashier, setCashier] = useState({ name: '', email: '', password: '' });
-  const [messages, setMessages] = useState({});
   const [cashiersByShop, setCashiersByShop] = useState({});
   const [billsByShop, setBillsByShop] = useState({});
   const [productsByShop, setProductsByShop] = useState({});
   const [viewOption, setViewOption] = useState({});
+  const [analytics, setAnalytics] = useState({ totalRevenue: 0, productSales: [], salesPerDay: [] });
+  const [selectedDate, setSelectedDate] = useState('');
+  const [dailyProductSales, setDailyProductSales] = useState([]);
 
   useEffect(() => {
     fetchShops();
+    fetchAnalytics();
   }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await API.get('/analytics/vendor');
+      setAnalytics(res.data);
+    } catch (err) {
+      console.error('Failed to fetch analytics');
+    }
+  };
+
+  const fetchDailyProductSales = async (date) => {
+    try {
+      const res = await API.get(`/analytics/vendor/daily-product-sales?date=${date}`);
+      setDailyProductSales(res.data);
+    } catch (err) {
+      console.error('Failed to fetch daily product sales');
+    }
+  };
 
   const fetchShops = async () => {
     try {
@@ -41,7 +69,7 @@ const VendorDashboard = () => {
   const fetchBills = async (shopId) => {
     try {
       const res = await API.get('/billing/vendor');
-      const shopBills = res.data.filter(b => b.shopId === shopId);
+      const shopBills = res.data.filter((b) => b.shopId._id === shopId);
       setBillsByShop((prev) => ({ ...prev, [shopId]: shopBills }));
     } catch (err) {
       console.error('Failed to fetch bills');
@@ -83,7 +111,7 @@ const VendorDashboard = () => {
         ...product,
         price: Number(product.price),
         quantity: Number(product.quantity),
-        shopId
+        shopId,
       });
       fetchProductsForShop(shopId);
       setProduct({ name: '', price: '', quantity: '' });
@@ -111,6 +139,12 @@ const VendorDashboard = () => {
     }
   };
 
+  const handleDateChange = (e) => {
+    const date = e.target.value;
+    setSelectedDate(date);
+    if (date) fetchDailyProductSales(date);
+  };
+
   return (
     <div className="min-h-screen relative p-8 bg-gray-100">
       <button
@@ -122,7 +156,45 @@ const VendorDashboard = () => {
       >
         Logout
       </button>
+
       <h1 className="text-3xl font-bold text-blue-700 mb-6">Vendor Dashboard</h1>
+
+      <div className="bg-white p-6 rounded shadow-md mb-8">
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700">📊 Sales Analytics</h2>
+        <p className="text-lg text-green-700">Total Revenue: ₹{analytics.totalRevenue || 0}</p>
+
+        <div className="mt-4">
+          <label className="block mb-2 text-sm font-medium">Select Date for Sales:</label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={handleDateChange}
+            className="border p-2 rounded"
+          />
+        </div>
+
+        {dailyProductSales.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-md font-semibold mb-2">📆 Sales on {selectedDate}</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={dailyProductSales.map(item => ({ name: item.name, quantity: item.quantitySold }))}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="quantity" fill="#3182CE" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        <h3 className="text-md font-semibold mt-4 mb-2">🔥 Best Selling Products:</h3>
+        <ul className="list-disc pl-5">
+          {analytics.productSales?.map((item, idx) => (
+            <li key={idx}>{item.name} - {item.quantitySold} units</li>
+          ))}
+        </ul>
+      </div>
 
       <div className="max-w-md bg-white p-6 rounded shadow-md mb-8">
         <h2 className="text-xl font-semibold mb-4">Create Shop</h2>
@@ -145,10 +217,7 @@ const VendorDashboard = () => {
             className="w-full p-2 border rounded"
             required
           />
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-          >
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
             Create Shop
           </button>
         </form>
@@ -178,42 +247,19 @@ const VendorDashboard = () => {
           {selectedShopId === shop._id && (
             <div className="mt-6">
               <div className="mb-4 space-x-4">
-                <button
-                  className="bg-green-500 text-white px-3 py-1 rounded"
-                  onClick={() => setViewOption({ [shop._id]: 'product' })}
-                >
-                  ➕ Add Product
-                </button>
-                <button
-                  className="bg-purple-500 text-white px-3 py-1 rounded"
-                  onClick={() => setViewOption({ [shop._id]: 'cashier' })}
-                >
-                  👤 Add Cashier
-                </button>
-                <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded"
-                  onClick={() => setViewOption({ [shop._id]: 'bills' })}
-                >
-                  🧾 View Bills
-                </button>
-                <button
-                  className="bg-yellow-500 text-white px-3 py-1 rounded"
-                  onClick={() => setViewOption({ [shop._id]: 'products' })}
-                >
-                  📦 View Products
-                </button>
+                <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={() => setViewOption({ [shop._id]: 'product' })}>➕ Add Product</button>
+                <button className="bg-purple-500 text-white px-3 py-1 rounded" onClick={() => setViewOption({ [shop._id]: 'cashier' })}>👤 Add Cashier</button>
+                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => setViewOption({ [shop._id]: 'bills' })}>🧾 View Bills</button>
+                <button className="bg-yellow-500 text-white px-3 py-1 rounded" onClick={() => setViewOption({ [shop._id]: 'products' })}>📦 View Products</button>
               </div>
 
-              {/* Conditionally Render Sections */}
               {viewOption[shop._id] === 'product' && (
                 <div className="mb-6">
                   <h4 className="text-lg font-semibold mb-2">Add Product</h4>
                   <input type="text" name="name" placeholder="Product Name" value={product.name} onChange={handleProductChange} className="w-full p-2 border rounded mb-2" />
                   <input type="number" name="price" placeholder="Price" value={product.price} onChange={handleProductChange} className="w-full p-2 border rounded mb-2" />
                   <input type="number" name="quantity" placeholder="Quantity" value={product.quantity} onChange={handleProductChange} className="w-full p-2 border rounded mb-2" />
-                  <button onClick={() => handleAddProduct(shop._id)} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                    Add Product
-                  </button>
+                  <button onClick={() => handleAddProduct(shop._id)} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Add Product</button>
                 </div>
               )}
 
@@ -223,10 +269,7 @@ const VendorDashboard = () => {
                   <input type="text" name="name" placeholder="Cashier Name" value={cashier.name} onChange={handleCashierChange} className="w-full p-2 border rounded mb-2" />
                   <input type="email" name="email" placeholder="Email" value={cashier.email} onChange={handleCashierChange} className="w-full p-2 border rounded mb-2" />
                   <input type="password" name="password" placeholder="Password" value={cashier.password} onChange={handleCashierChange} className="w-full p-2 border rounded mb-2" />
-                  <button onClick={() => handleAddCashier(shop._id)} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                    Add Cashier
-                  </button>
-
+                  <button onClick={() => handleAddCashier(shop._id)} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Add Cashier</button>
                   {cashiersByShop[shop._id]?.length > 0 && (
                     <div className="mt-4">
                       <h4 className="text-md font-semibold mb-2">Cashiers</h4>
@@ -245,22 +288,19 @@ const VendorDashboard = () => {
 
               {viewOption[shop._id] === 'bills' && billsByShop[shop._id] && (
                 <div className="mt-6">
-                  <h4 className="text-lg font-semibold mb-2">📊 Sales Chart</h4>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={billsByShop[shop._id].map(b => ({ id: b._id.slice(-5), total: b.total }))}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="id" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="total" fill="#3182CE" />
-                    </BarChart>
-                  </ResponsiveContainer>
-
-                  <h4 className="text-lg font-semibold mt-6 mb-2">🧾 Bill Records</h4>
+                  <h4 className="text-lg font-semibold mb-2">🧾 Bill Records</h4>
                   <ul className="divide-y">
-                    {billsByShop[shop._id].map(b => (
-                      <li key={b._id} className="py-1">
-                        Bill #{b._id.slice(-5)} | ₹{b.total} | {new Date(b.createdAt).toLocaleString()} | Customer: {b.customerName || 'N/A'}
+                    {billsByShop[shop._id].map((b) => (
+                      <li key={b._id} className="py-2">
+                        Bill #{b._id.slice(-5)} | ₹{b.total} | {new Date(b.createdAt).toLocaleString()} | Customer: {b.customerName || 'N/A'} |
+                        <a
+                          href={`${import.meta.env.VITE_BACKEND_URL}${b.pdfPath}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline ml-2"
+                        >
+                          View PDF
+                        </a>
                       </li>
                     ))}
                   </ul>
@@ -271,7 +311,7 @@ const VendorDashboard = () => {
                 <div className="mt-6">
                   <h4 className="text-lg font-semibold mb-2">📦 Products</h4>
                   <ul className="divide-y">
-                    {productsByShop[shop._id].map(p => (
+                    {productsByShop[shop._id].map((p) => (
                       <li key={p._id} className="py-1">
                         {p.name} - ₹{p.price} (Qty: {p.quantity})
                       </li>

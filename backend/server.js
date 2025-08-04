@@ -9,6 +9,8 @@ const productRoutes = require('./routes/productRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const path = require('path');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+
 // const cors = require('cors');
 
 
@@ -25,6 +27,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/invoices', express.static(path.join(__dirname, 'invoices')));
+app.use('/api/analytics', analyticsRoutes);
+
 
 
 
