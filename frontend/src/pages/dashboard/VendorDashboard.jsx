@@ -9,6 +9,8 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from 'recharts';
+import { io } from 'socket.io-client';
+
 
 const VendorDashboard = () => {
   const [shops, setShops] = useState([]);
@@ -28,6 +30,15 @@ const VendorDashboard = () => {
   useEffect(() => {
     fetchShops();
     fetchAnalytics();
+
+    const socket = io(import.meta.env.VITE_BACKEND_URL);
+    socket.on('newBill', (data) => {
+      console.log('🧾 Real-time Bill Received:', data);
+      if (data.shopId) fetchBills(data.shopId);
+      fetchAnalytics();
+    });
+
+    return () => socket.disconnect();
   }, []);
 
   const fetchAnalytics = async () => {

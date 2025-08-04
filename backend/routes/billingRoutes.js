@@ -71,6 +71,17 @@ Airport Inventory System`.trim();
       createdAt: new Date(),
     });
 
+    // ✅ Emit real-time event via Socket.IO
+    const io = req.app.get('io'); // 🔁 Get socket.io instance
+    io.emit('newBill', {         // 🔁 Emit to all connected vendor dashboards
+      billId: bill._id,
+      shopId: shop._id,
+      shopName: shop.name,
+      total: bill.total,
+      createdAt: bill.createdAt,
+      customerName: bill.customerName || 'N/A'
+    });
+
     // ✅ Generate PDF Invoice
     const formatted = formatTimestamp(bill.createdAt);
     const invoiceFileName = `invoice-${bill._id}-${formatted}.pdf`;
