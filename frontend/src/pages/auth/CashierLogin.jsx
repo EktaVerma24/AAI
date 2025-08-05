@@ -16,7 +16,7 @@ const CashierLogin = () => {
       localStorage.setItem('role', 'cashier');
       localStorage.setItem('cashier', JSON.stringify(res.data.cashier));
 
-      navigate('/cashier/dashboard');
+      navigate('/cashier/dashboard',{replace: true});
     } catch (err) {
       alert(err.response?.data?.msg || 'Login failed');
     }

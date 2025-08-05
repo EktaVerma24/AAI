@@ -302,18 +302,33 @@ const VendorDashboard = () => {
                   <h4 className="text-lg font-semibold mb-2">🧾 Bill Records</h4>
                   <ul className="divide-y">
                     {billsByShop[shop._id].map((b) => (
-                      <li key={b._id} className="py-2">
-                        Bill #{b._id.slice(-5)} | ₹{b.total} | {new Date(b.createdAt).toLocaleString()} | Customer: {b.customerName || 'N/A'} |
-                        <a
-                          href={`${import.meta.env.VITE_BACKEND_URL}${b.pdfPath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline ml-2"
-                        >
-                          View PDF
-                        </a>
-                      </li>
-                    ))}
+  <li key={b._id} className="py-2">
+    <div><strong>Bill #{b._id.slice(-5)}</strong></div>
+    <div>🧾 Total: ₹{b.total} | 📅 {new Date(b.createdAt).toLocaleString()}</div>
+    <div>👤 Customer: {b.customerName || 'N/A'}</div>
+    <div>👨‍💼 Cashier: {b.cashierId?.name || 'N/A'}</div>
+    <div>📦 Products:
+      <ul className="list-disc pl-5">
+        {b.items?.map((item, idx) => (
+          <li key={idx}>
+            {item.productId?.name || item.productName || 'Unknown'} × {item.quantity}
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div>
+      <a
+        href={`${import.meta.env.VITE_BACKEND_URL}${b.pdfPath}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline"
+      >
+        View PDF
+      </a>
+    </div>
+  </li>
+))}
+
                   </ul>
                 </div>
               )}

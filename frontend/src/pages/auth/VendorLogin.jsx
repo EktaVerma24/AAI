@@ -14,7 +14,7 @@ const VendorLogin = () => {
       const res = await API.post('/auth/login', { email, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('role', 'vendor');
-      navigate('/vendor/dashboard');
+      navigate('/vendor/dashboard',{replace: true});
     } catch (err) {
       const msg = err.response?.data?.msg;
       if (msg?.includes('under review')) {

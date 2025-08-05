@@ -44,26 +44,75 @@ router.post('/login', async (req, res) => {
 // ✅ Admin Dashboard Data
 router.get('/dashboard', auth('admin'), async (req, res) => {
   try {
-    const vendors = await Vendor.countDocuments();
-    const shops = await Shop.countDocuments();
-    const cashiers = await Cashier.countDocuments();
-    const products = await Product.countDocuments();
-    const bills = await Bill.find().sort({ createdAt: -1 }).limit(5);
+    const vendors = await Vendor.find({ approved: true });
+    const shops = await Shop.find({});
+    const cashiers = await Cashier.find({});
+    const products = await Product.find({});
 
-    const totalSales = (await Bill.find()).reduce((sum, bill) => sum + bill.total, 0);
+    const recentBills = await Bill.find({})
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate({
+    path: 'shopId',
+    populate: {
+      path: 'vendorId',
+      model: 'Vendor',
+      select: 'name'
+    },
+    select: 'name vendorId'
+  })
+  .populate('cashierId', 'name');
+
+    // 🔥 Monthly sales grouped by vendor
+    const monthlySales = await Bill.aggregate([
+      {
+        $lookup: {
+          from: 'shops',
+          localField: 'shopId',
+          foreignField: '_id',
+          as: 'shop'
+        }
+      },
+      { $unwind: '$shop' },
+      {
+        $lookup: {
+          from: 'vendors',
+          localField: 'shop.vendorId',
+          foreignField: '_id',
+          as: 'vendor'
+        }
+      },
+      { $unwind: '$vendor' },
+      {
+        $group: {
+          _id: {
+            month: { $month: '$createdAt' },
+            year: { $year: '$createdAt' },
+            vendorName: '$vendor.name'
+          },
+          totalSales: { $sum: '$total' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
 
     res.json({
-      vendors,
-      shops,
-      cashiers,
-      products,
-      totalSales,
-      recentBills: bills
+      vendors: vendors.length,
+      vendorsList: vendors,
+      shops: shops.length,
+      shopsList: shops,
+      cashiers: cashiers.length,
+      cashiersList: cashiers,
+      products: products.length,
+      productsList: products,
+      recentBills,
+      monthlySales
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
+
 
 // ✅ Get all vendors
 router.get('/vendors', auth('admin'), async (req, res) => {
