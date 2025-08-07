@@ -4,6 +4,7 @@ const Bill = require('../models/billModel');
 const Shop = require('../models/shopModel');
 const Product = require('../models/productModel');
 const auth = require('../middleware/authMiddleware');
+const mongoose = require('mongoose');
 
 // ✅ GET /api/analytics/vendor — Overall analytics for vendor
 router.get('/vendor', auth('vendor'), async (req, res) => {
@@ -141,8 +142,6 @@ router.get('/vendor/sales-per-shop', auth('vendor'), async (req, res) => {
     const shops = await Shop.find({ vendorId: req.user.id });
     const shopIds = shops.map(s => s._id);
 
-    
-
     const startDate = start.toISOString().split("T")[0];
     const endDate = end.toISOString().split("T")[0];
 
@@ -150,6 +149,26 @@ router.get('/vendor/sales-per-shop', auth('vendor'), async (req, res) => {
     console.log('End:', endDate);
     
     console.log('Shop IDs:', shopIds);
+
+    console.log('Matching against shopIds:', shopIds.map(id => id.toString()));
+
+    const billss = await Bill.find({
+  shopId: { $in: [
+    new mongoose.Types.ObjectId("688e70dc98e3bcfe6e5af923"),
+    new mongoose.Types.ObjectId("688e70f198e3bcfe6e5af925"),
+    new mongoose.Types.ObjectId("689100b2bf0ea818b15d91b8"),
+    new mongoose.Types.ObjectId("6893042622c849cd59411de2")
+  ]},
+  createdAt: {
+    $gte: new Date("2025-03-07T00:00:00.000Z"),
+    $lt: new Date("2025-03-08T00:00:00.000Z")
+  }
+});
+console.log("Matching bills:", billss);
+
+console.log("Shop IDs (final):", shopIds.map(id => typeof id));
+
+
 
     const bills = await Bill.aggregate([
       // {
