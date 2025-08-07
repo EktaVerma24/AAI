@@ -56,10 +56,12 @@ const VendorDashboard = () => {
     }
   };
 
-  const fetchSalesPerShop = async () => {
+  const fetchSalesPerShop = async (date) => {
     try {
-      const res = await API.get('/analytics/vendor/sales-per-shop');
+      const res = await API.get(`/analytics/vendor/sales-per-shop?date=${date}`);
       setSalesPerShop(res.data);
+      console.log('Sales per shop:', res.data);
+      
     } catch {
       console.error('Failed to fetch sales per shop');
     }
