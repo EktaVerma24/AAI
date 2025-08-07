@@ -11,8 +11,8 @@ import {
 } from 'recharts';
 import { io } from 'socket.io-client';
 
-
 const VendorDashboard = () => {
+  // State setup
   const [shops, setShops] = useState([]);
   const [selectedShopId, setSelectedShopId] = useState(null);
   const [shopData, setShopData] = useState({ name: '', location: '' });
@@ -23,30 +23,45 @@ const VendorDashboard = () => {
   const [billsByShop, setBillsByShop] = useState({});
   const [productsByShop, setProductsByShop] = useState({});
   const [viewOption, setViewOption] = useState({});
-  const [analytics, setAnalytics] = useState({ totalRevenue: 0, productSales: [], salesPerDay: [] });
+  const [analytics, setAnalytics] = useState({
+    totalRevenue: 0,
+    productSales: [],
+    salesPerDay: [],
+  });
   const [selectedDate, setSelectedDate] = useState('');
   const [dailyProductSales, setDailyProductSales] = useState([]);
+  const [salesPerShop, setSalesPerShop] = useState([]);
 
   useEffect(() => {
     fetchShops();
     fetchAnalytics();
+    fetchSalesPerShop();
 
     const socket = io(import.meta.env.VITE_BACKEND_URL);
     socket.on('newBill', (data) => {
-      console.log('🧾 Real-time Bill Received:', data);
       if (data.shopId) fetchBills(data.shopId);
       fetchAnalytics();
+      fetchSalesPerShop();
     });
-
     return () => socket.disconnect();
   }, []);
 
+  // Fetch methods
   const fetchAnalytics = async () => {
     try {
       const res = await API.get('/analytics/vendor');
       setAnalytics(res.data);
-    } catch (err) {
+    } catch {
       console.error('Failed to fetch analytics');
+    }
+  };
+
+  const fetchSalesPerShop = async () => {
+    try {
+      const res = await API.get('/analytics/vendor/sales-per-shop');
+      setSalesPerShop(res.data);
+    } catch {
+      console.error('Failed to fetch sales per shop');
     }
   };
 
@@ -54,7 +69,7 @@ const VendorDashboard = () => {
     try {
       const res = await API.get(`/analytics/vendor/daily-product-sales?date=${date}`);
       setDailyProductSales(res.data);
-    } catch (err) {
+    } catch {
       console.error('Failed to fetch daily product sales');
     }
   };
@@ -63,7 +78,7 @@ const VendorDashboard = () => {
     try {
       const res = await API.get('/shops');
       setShops(res.data);
-    } catch (err) {
+    } catch {
       console.error('Failed to fetch shops');
     }
   };
@@ -72,7 +87,7 @@ const VendorDashboard = () => {
     try {
       const res = await API.get(`/cashiers/${shopId}`);
       setCashiersByShop((prev) => ({ ...prev, [shopId]: res.data }));
-    } catch (err) {
+    } catch {
       console.error('Failed to fetch cashiers');
     }
   };
@@ -82,7 +97,7 @@ const VendorDashboard = () => {
       const res = await API.get('/billing/vendor');
       const shopBills = res.data.filter((b) => b.shopId._id === shopId);
       setBillsByShop((prev) => ({ ...prev, [shopId]: shopBills }));
-    } catch (err) {
+    } catch {
       console.error('Failed to fetch bills');
     }
   };
@@ -91,7 +106,7 @@ const VendorDashboard = () => {
     try {
       const res = await API.get(`/products/${shopId}`);
       setProductsByShop((prev) => ({ ...prev, [shopId]: res.data }));
-    } catch (err) {
+    } catch {
       console.error('Failed to fetch products');
     }
   };
@@ -108,13 +123,10 @@ const VendorDashboard = () => {
     }
   };
 
-  const handleProductChange = (e) => {
+  const handleProductChange = (e) =>
     setProduct({ ...product, [e.target.name]: e.target.value });
-  };
-
-  const handleCashierChange = (e) => {
+  const handleCashierChange = (e) =>
     setCashier({ ...cashier, [e.target.name]: e.target.value });
-  };
 
   const handleAddProduct = async (shopId) => {
     try {
@@ -126,7 +138,7 @@ const VendorDashboard = () => {
       });
       fetchProductsForShop(shopId);
       setProduct({ name: '', price: '', quantity: '' });
-    } catch (err) {
+    } catch {
       alert('❌ Failed to add product');
     }
   };
@@ -136,7 +148,7 @@ const VendorDashboard = () => {
       await API.post('/cashiers', { ...cashier, shopId });
       fetchCashiers(shopId);
       setCashier({ name: '', email: '', password: '' });
-    } catch (err) {
+    } catch {
       alert('❌ Failed to add cashier');
     }
   };
@@ -145,7 +157,7 @@ const VendorDashboard = () => {
     try {
       await API.delete(`/cashiers/${cashierId}`);
       fetchCashiers(shopId);
-    } catch (err) {
+    } catch {
       alert('❌ Failed to remove cashier');
     }
   };
@@ -167,12 +179,11 @@ const VendorDashboard = () => {
       >
         Logout
       </button>
-
       <h1 className="text-3xl font-bold text-blue-700 mb-6">Vendor Dashboard</h1>
 
       <div className="bg-white p-6 rounded shadow-md mb-8">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700">📊 Sales Analytics</h2>
-        <p className="text-lg text-green-700">Total Revenue: ₹{analytics.totalRevenue || 0}</p>
+        <p className="text-lg text-green-700">Total Revenue: ₹{analytics.totalRevenue}</p>
 
         <div className="mt-4">
           <label className="block mb-2 text-sm font-medium">Select Date for Sales:</label>
@@ -188,7 +199,12 @@ const VendorDashboard = () => {
           <div className="mt-4">
             <h3 className="text-md font-semibold mb-2">📆 Sales on {selectedDate}</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dailyProductSales.map(item => ({ name: item.name, quantity: item.quantitySold }))}>
+              <BarChart
+                data={dailyProductSales.map((item) => ({
+                  name: item.name,
+                  quantity: item.quantitySold,
+                }))}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -200,11 +216,61 @@ const VendorDashboard = () => {
         )}
 
         <h3 className="text-md font-semibold mt-4 mb-2">🔥 Best Selling Products:</h3>
-        <ul className="list-disc pl-5">
-          {analytics.productSales?.map((item, idx) => (
-            <li key={idx}>{item.name} - {item.quantitySold} units</li>
+        <ul className="list-disc pl-5 mb-4">
+          {analytics.productSales.map((item, idx) => (
+            <li key={idx}>
+              {item.name} - {item.quantitySold} units
+            </li>
           ))}
         </ul>
+
+        {salesPerShop.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-md font-semibold mb-2">🏬 Sales per Shop:</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={salesPerShop.map((s) => ({
+                  name: s.shopName,
+                  totalSales: s.totalSales,
+                }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="totalSales" fill="#38A169" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      <div className="max-w-md bg-white p-6 rounded shadow-md mb-8">
+        <h2 className="text-xl font-semibold mb-4">Create Shop</h2>
+        <form onSubmit={handleCreateShop} className="space-y-4">
+          <input
+            type="text"
+            name="name"
+            placeholder="Shop Name"
+            value={shopData.name}
+            onChange={(e) => setShopData({ ...shopData, name: e.target.value })}
+            className="w-full p-2 border rounded"
+            required
+          />
+          <input
+            type="text"
+            name="location"
+            placeholder="Terminal / Location"
+            value={shopData.location}
+            onChange={(e) => setShopData({ ...shopData, location: e.target.value })}
+            className="w-full p-2 border rounded"
+            required
+          />
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+            Create Shop
+          </button>
+        </form>
+        {shopMessage && <p className="mt-4 text-green-600">{shopMessage}</p>}
       </div>
 
       <div className="max-w-md bg-white p-6 rounded shadow-md mb-8">

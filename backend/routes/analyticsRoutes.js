@@ -126,4 +126,54 @@ router.get('/vendor/daily-product-sales', auth('vendor'), async (req, res) => {
   }
 });
 
+// ✅ NEW: GET /api/analytics/vendor/sales-per-shop?date=YYYY-MM-DD
+router.get('/vendor/sales-per-shop', auth('vendor'), async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ msg: 'Date is required in YYYY-MM-DD format' });
+
+    const start = new Date(date);
+    const end = new Date(new Date(date).setDate(start.getDate() + 1));
+
+    const shops = await Shop.find({ vendorId: req.user.id });
+    const shopIds = shops.map(s => s._id);
+
+    const bills = await Bill.aggregate([
+      {
+        $match: {
+          shopId: { $in: shopIds },
+          createdAt: { $gte: start, $lt: end }
+        }
+      },
+      {
+        $group: {
+          _id: '$shopId',
+          totalSales: { $sum: '$total' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'shops',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'shop'
+        }
+      },
+      { $unwind: '$shop' },
+      {
+        $project: {
+          shopName: '$shop.name',
+          totalSales: 1
+        }
+      },
+      { $sort: { totalSales: -1 } }
+    ]);
+
+    res.json(bills);
+  } catch (err) {
+    console.error('❌ Shop sales fetch error:', err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
 module.exports = router;
