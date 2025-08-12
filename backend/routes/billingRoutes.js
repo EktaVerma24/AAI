@@ -88,6 +88,12 @@ Airport Inventory System`.trim();
     const invoicePath = path.join(__dirname, `../invoices/${invoiceFileName}`);
     const invoiceURL = `/invoices/${invoiceFileName}`;
 
+    // Ensure invoices directory exists
+    const invoicesDir = path.dirname(invoicePath);
+    if (!fs.existsSync(invoicesDir)) {
+      fs.mkdirSync(invoicesDir, { recursive: true });
+    }
+
     const doc = new PDFDocument({ 
       margin: 50,
       size: 'A4',
@@ -100,23 +106,40 @@ Airport Inventory System`.trim();
         Producer: 'PDFKit'
       }
     });
-    doc.pipe(fs.createWriteStream(invoicePath));
+    
+    const writeStream = fs.createWriteStream(invoicePath);
+    doc.pipe(writeStream);
 
-    // Add logo
-    const logoPath = path.join(__dirname, '../assets/logo.png');
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 50, { width: 80, height: 80 });
+    // Add logo with comprehensive error handling
+    try {
+      const logoPath = path.join(__dirname, '../assets/logo.png');
+      if (fs.existsSync(logoPath)) {
+        const stats = fs.statSync(logoPath);
+        if (stats.size > 0) { // Check if file is not empty
+          doc.image(logoPath, 50, 50, { width: 80, height: 80 });
+        } else {
+          console.log('Logo file is empty, skipping logo');
+        }
+      } else {
+        console.log('Logo file not found at:', logoPath);
+      }
+    } catch (logoError) {
+      console.log('Logo loading failed, continuing without logo:', logoError.message);
+      // Continue without logo if there's an error
     }
 
-    // Header Section
-    doc.fontSize(24).fillColor('#1e40af').font('Helvetica-Bold')
+        // Header Section with enhanced styling
+    doc.fontSize(28).fillColor('#1e40af').font('Helvetica-Bold')
       .text('AIRPORT INVENTORY MANAGEMENT SYSTEM', 150, 60, { width: 400, align: 'center' });
     
-    doc.fontSize(16).fillColor('#374151').font('Helvetica')
+    // Add decorative line
+    doc.moveTo(150, 95).lineTo(550, 95).stroke();
+    
+    doc.fontSize(18).fillColor('#374151').font('Helvetica-Bold')
       .text('COMMERCIAL INVOICE', { align: 'center' }).moveDown(0.5);
 
-    // Invoice Details Section
-    doc.fontSize(10).fillColor('#6b7280').text('INVOICE DETAILS', 50, 160);
+    // Invoice Details Section with enhanced styling
+    doc.fontSize(11).fillColor('#6b7280').font('Helvetica-Bold').text('INVOICE DETAILS', 50, 160);
     doc.fontSize(12).fillColor('#111827').font('Helvetica-Bold')
       .text(`Invoice #: ${bill._id}`, 50, 180)
       .fontSize(10).font('Helvetica').fillColor('#374151')
@@ -133,23 +156,25 @@ Airport Inventory System`.trim();
         second: '2-digit'
       })}`, 50, 215);
 
-    // Shop Information
-    doc.fontSize(10).fillColor('#6b7280').text('SHOP INFORMATION', 300, 160);
+    // Shop Information with enhanced styling
+    doc.fontSize(11).fillColor('#6b7280').font('Helvetica-Bold').text('SHOP INFORMATION', 300, 160);
     doc.fontSize(12).fillColor('#111827').font('Helvetica-Bold')
       .text(shop?.name || 'N/A', 300, 180)
       .fontSize(10).font('Helvetica').fillColor('#374151')
       .text(`Location: ${shop?.location || 'N/A'}`, 300, 200);
 
-    // Customer Information
-    doc.fontSize(10).fillColor('#6b7280').text('CUSTOMER INFORMATION', 50, 250);
+    // Customer Information with enhanced styling
+    doc.fontSize(11).fillColor('#6b7280').font('Helvetica-Bold').text('CUSTOMER INFORMATION', 50, 250);
     doc.fontSize(12).fillColor('#111827').font('Helvetica-Bold')
       .text(customerName || 'Walk-in Customer', 50, 270)
       .fontSize(10).font('Helvetica').fillColor('#374151')
       .text(`Phone: ${customerPhone || 'N/A'}`, 50, 290);
 
-    // Table Header
+    // Table Header with enhanced styling
     doc.moveTo(50, 330).lineTo(550, 330).stroke();
-    doc.fontSize(11).fillColor('#374151').font('Helvetica-Bold')
+    // Add background color for header
+    doc.rect(50, 330, 500, 30).fill('#f3f4f6');
+    doc.fontSize(11).fillColor('#1e40af').font('Helvetica-Bold')
       .text('S.No.', 50, 340, { width: 40 })
       .text('Product ID', 90, 340, { width: 80 })
       .text('Quantity', 170, 340, { width: 60 })
@@ -159,14 +184,19 @@ Airport Inventory System`.trim();
       .text('Final Total (₹)', 450, 340, { width: 100 });
     doc.moveTo(50, 360).lineTo(550, 360).stroke();
 
-    // Table Content
+    // Table Content with enhanced styling
     let yPosition = 370;
     let serialNumber = 1;
     
-    updatedProducts.forEach((item) => {
+    updatedProducts.forEach((item, index) => {
       const itemTotal = item.quantity * item.price;
       const gst = itemTotal * 0.18;
       const finalTotal = itemTotal + gst;
+      
+      // Alternate row colors for better readability
+      if (index % 2 === 0) {
+        doc.rect(50, yPosition - 5, 500, 20).fill('#f9fafb');
+      }
       
       doc.fontSize(10).fillColor('#111827').font('Helvetica')
         .text(serialNumber.toString(), 50, yPosition, { width: 40 })
@@ -185,12 +215,15 @@ Airport Inventory System`.trim();
     doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
     yPosition += 10;
 
-    // Summary Section
+    // Summary Section with enhanced styling
     const subtotal = total;
     const gstTotal = subtotal * 0.18;
     const grandTotal = subtotal + gstTotal;
 
-    doc.fontSize(11).fillColor('#374151').font('Helvetica-Bold')
+    // Add summary box background
+    doc.rect(380, yPosition - 10, 170, 80).fill('#f8fafc').stroke('#e2e8f0');
+    
+    doc.fontSize(12).fillColor('#1e40af').font('Helvetica-Bold')
       .text('SUMMARY', 400, yPosition, { width: 150, align: 'right' });
     yPosition += 20;
     
@@ -209,37 +242,43 @@ Airport Inventory System`.trim();
     doc.moveTo(400, yPosition).lineTo(550, yPosition).stroke();
     yPosition += 10;
     
-    doc.fontSize(12).fillColor('#1e40af').font('Helvetica-Bold')
+    doc.fontSize(14).fillColor('#1e40af').font('Helvetica-Bold')
       .text('GRAND TOTAL:', 400, yPosition, { width: 100, align: 'right' })
-      .fontSize(12).fillColor('#1e40af').font('Helvetica-Bold')
+      .fontSize(14).fillColor('#1e40af').font('Helvetica-Bold')
       .text(`₹${grandTotal.toFixed(2)}`, 500, yPosition, { width: 50, align: 'right' });
 
-    // Footer Section
+    // Footer Section with enhanced styling
     yPosition += 40;
     doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
     yPosition += 20;
 
-    doc.fontSize(9).fillColor('#6b7280').font('Helvetica')
-      .text('TERMS & CONDITIONS:', 50, yPosition, { width: 500 })
-      .fontSize(8).fillColor('#9ca3af')
-      .text('• This is a computer generated invoice and does not require signature', 50, yPosition + 15, { width: 500 })
-      .text('• Goods once sold will not be taken back or exchanged', 50, yPosition + 30, { width: 500 })
-      .text('• Payment should be made at the time of purchase', 50, yPosition + 45, { width: 500 })
-      .text('• For any queries, please contact our customer support', 50, yPosition + 60, { width: 500 });
+    // Add footer background
+    doc.rect(50, yPosition - 5, 500, 100).fill('#f8fafc').stroke('#e2e8f0');
+    
+    doc.fontSize(10).fillColor('#1e40af').font('Helvetica-Bold')
+      .text('TERMS & CONDITIONS:', 60, yPosition + 5, { width: 480 })
+      .fontSize(9).fillColor('#6b7280').font('Helvetica')
+      .text('• This is a computer generated invoice and does not require signature', 60, yPosition + 20, { width: 480 })
+      .text('• Goods once sold will not be taken back or exchanged', 60, yPosition + 35, { width: 480 })
+      .text('• Payment should be made at the time of purchase', 60, yPosition + 50, { width: 480 })
+      .text('• For any queries, please contact our customer support', 60, yPosition + 65, { width: 480 });
 
-    yPosition += 80;
-    doc.fontSize(10).fillColor('#374151').font('Helvetica-Bold')
+    yPosition += 100;
+    doc.fontSize(12).fillColor('#1e40af').font('Helvetica-Bold')
       .text('Thank you for your business!', { align: 'center' })
-      .fontSize(8).fillColor('#9ca3af').font('Helvetica')
+      .fontSize(9).fillColor('#6b7280').font('Helvetica')
       .text('Airport Inventory Management System | Email: support@airport-inventory.com | Phone: +91-XXXXXXXXXX', { align: 'center' });
 
     doc.end();
 
-    res.status(200).json({
-      msg: '✅ Billing successful. Invoice generated.',
-      billId: bill._id,
-      pdfPath: invoiceURL,
-    });
+    // Wait a moment for PDF to be written
+    setTimeout(() => {
+      res.status(200).json({
+        msg: '✅ Billing successful. Invoice generated.',
+        billId: bill._id,
+        pdfPath: invoiceURL,
+      });
+    }, 100);
   } catch (err) {
     console.error('❌ Billing Error:', err.message);
     res.status(500).json({ msg: err.message });
