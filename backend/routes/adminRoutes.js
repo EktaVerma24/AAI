@@ -57,9 +57,9 @@ router.get('/dashboard', auth('admin'), async (req, res) => {
     populate: {
       path: 'vendorId',
       model: 'Vendor',
-      select: 'name'
+      select: 'companyName name'
     },
-    select: 'name vendorId'
+          select: 'companyName name vendorId'
   })
   .populate('cashierId', 'name');
 
@@ -88,7 +88,7 @@ router.get('/dashboard', auth('admin'), async (req, res) => {
           _id: {
             month: { $month: '$createdAt' },
             year: { $year: '$createdAt' },
-            vendorName: '$vendor.name'
+            vendorName: { $ifNull: ['$vendor.companyName', '$vendor.name'] }
           },
           totalSales: { $sum: '$total' }
         }
@@ -137,7 +137,7 @@ router.patch('/vendors/:id/approve', auth('admin'), async (req, res) => {
     await transporter.sendMail({
       to: vendor.email,
       subject: 'Vendor Approval Confirmation',
-      text: `Hello ${vendor.name}, your registration has been approved. You can now log in.`
+      text: `Hello ${vendor.companyName || vendor.name || 'Vendor'}, your registration has been approved. You can now log in.`
     });
 
     res.json({ msg: 'Vendor approved and email sent', vendor });
@@ -155,7 +155,7 @@ router.delete('/vendors/:id', auth('admin'), async (req, res) => {
     await transporter.sendMail({
       to: vendor.email,
       subject: 'Vendor Registration Rejected',
-      text: `Hello ${vendor.name}, your registration has been rejected. Contact support for more information.`
+      text: `Hello ${vendor.companyName || vendor.name || 'Vendor'}, your registration has been rejected. Contact support for more information.`
     });
 
     res.json({ msg: 'Vendor rejected and email sent' });

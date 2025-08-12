@@ -10,6 +10,10 @@ const shopSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vendor',
     required: true
+  },
+  upiQrCode: {
+    type: String,
+    default: null
   }
 });
 

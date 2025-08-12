@@ -132,19 +132,32 @@ router.get('/vendor/sales-per-shop', auth('vendor'), async (req, res) => {
     const { date } = req.query;
     if (!date) return res.status(400).json({ msg: 'Date is required in YYYY-MM-DD format' });
 
-    const start = new Date(date);
-    const end = new Date(new Date(date).setDate(start.getDate() + 1));
+
+    const start = new Date(date); // midnight UTC of the day
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
 
     const shops = await Shop.find({ vendorId: req.user.id });
     const shopIds = shops.map(s => s._id);
 
+    
+
+    const startDate = start.toISOString().split("T")[0];
+    const endDate = end.toISOString().split("T")[0];
+
+    // console.log('Start:', startDate);
+    // console.log('End:', endDate);
+    
+    // console.log('Shop IDs:', shopIds);
+
     const bills = await Bill.aggregate([
-      {
-        $match: {
-          shopId: { $in: shopIds },
-          createdAt: { $gte: start, $lt: end }
-        }
-      },
+      // {
+      //   $match: {
+      //     shopId: { $in: shopIds },
+      //     createdAt: { $gte: start, $lt: end }
+      //   }
+      // },
       {
         $group: {
           _id: '$shopId',
@@ -168,6 +181,9 @@ router.get('/vendor/sales-per-shop', auth('vendor'), async (req, res) => {
       },
       { $sort: { totalSales: -1 } }
     ]);
+
+    // console.log(bills);
+    
 
     res.json(bills);
   } catch (err) {

@@ -42,7 +42,7 @@ router.post('/', auth('cashier'), async (req, res) => {
 
         const subject = `⚠️ Low Stock Alert: ${product.name}`;
         const message = `
-Dear ${vendor.name},
+Dear ${vendor.companyName || vendor.name || 'Vendor'},
 
 The product "${product.name}" in your shop "${shop.name}" is running low.
 
