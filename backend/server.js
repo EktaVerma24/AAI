@@ -23,7 +23,7 @@ const server = http.createServer(app);
 // ⚙️ Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.VITE_BACKEND_URL,
+    origin: "https://aai-project.onrender.com",
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
 
 // 🌍 Middlewares
 app.use(cors({
-  origin: process.env.VITE_BACKEND_URL ,
+  origin: "https://aai-project.onrender.com" ,
   credentials: true
 }));
 app.use(express.json());
