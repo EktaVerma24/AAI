@@ -19,11 +19,12 @@ const app = express();
 
 // 💡 Create HTTP server for Socket.IO to hook into
 const server = http.createServer(app);
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 // ⚙️ Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: "https://aai-project.onrender.com",
+    origin: FRONTEND_URL,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -43,7 +44,7 @@ io.on('connection', (socket) => {
 
 // 🌍 Middlewares
 app.use(cors({
-  origin: "https://aai-project.onrender.com" ,
+  origin: FRONTEND_URL,
   credentials: true
 }));
 app.use(express.json());
