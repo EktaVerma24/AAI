@@ -130,7 +130,7 @@ Airport Inventory System`.trim();
 
         // Header Section with enhanced styling
     doc.fontSize(28).fillColor('#1e40af').font('Helvetica-Bold')
-      .text('AIRPORT INVENTORY MANAGEMENT SYSTEM', 10, 60, { align: 'center' });
+      .text('AIRPORT INVENTORY MANAGEMENT SYSTEM', 50, 60, { align: 'center' });
     
     // Add decorative line
     // doc.moveTo(150, 95).lineTo(550, 95).stroke();
