@@ -130,13 +130,13 @@ Airport Inventory System`.trim();
 
         // Header Section with enhanced styling
     doc.fontSize(28).fillColor('#1e40af').font('Helvetica-Bold')
-      .text('AIRPORT INVENTORY MANAGEMENT SYSTEM', 150, 60, { width: 400, align: 'center' });
+      .text('AIRPORT INVENTORY MANAGEMENT SYSTEM', 0, 60, { align: 'center' });
     
     // Add decorative line
-    doc.moveTo(150, 95).lineTo(550, 95).stroke();
+    // doc.moveTo(150, 95).lineTo(550, 95).stroke();
     
     doc.fontSize(18).fillColor('#374151').font('Helvetica-Bold')
-      .text('COMMERCIAL INVOICE', { align: 'center' }).moveDown(0.5);
+        .text('COMMERCIAL INVOICE', { align: 'center' }).moveDown(0.5);
 
     // Invoice Details Section with enhanced styling
     doc.fontSize(11).fillColor('#6b7280').font('Helvetica-Bold').text('INVOICE DETAILS', 50, 160);
