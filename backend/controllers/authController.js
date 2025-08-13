@@ -3,14 +3,14 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 exports.registerVendor = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { companyName, email, password, address, phoneNumber } = req.body;
 
     try {
         const existing = await Vendor.findOne({ email });
         if (existing) return res.status(400).json({ message: 'Vendor already exists' });
 
         const hash = await bcrypt.hash(password, 10);
-        const vendor = await Vendor.create({name, email, password:hash});
+        const vendor = await Vendor.create({companyName, email, password:hash, address, phoneNumber});
 
         res.status(201).json({msg:"Vendor Registered",vendor});
     }catch(err){
