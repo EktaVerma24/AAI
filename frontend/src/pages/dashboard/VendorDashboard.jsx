@@ -67,6 +67,7 @@ const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [qrEditState, setQrEditState] = useState({}); // { [shopId]: { file: File|null, loading: bool, error: string|null } }
+  const [editedQuantities, setEditedQuantities] = useState({}); // { [productId]: quantity }
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -214,6 +215,40 @@ const VendorDashboard = () => {
       setCashier({ name: '', email: '', password: '' });
     } catch {
       alert('❌ Failed to add cashier');
+    }
+  };
+
+  const handleQuantityInputChange = (productId, value) => {
+    setEditedQuantities((prev) => ({ ...prev, [productId]: value }));
+  };
+
+  const handleUpdateProductStock = async (productId, shopId) => {
+    const quantity = Number(editedQuantities[productId]);
+    if (Number.isNaN(quantity)) {
+      alert('Please enter a valid quantity');
+      return;
+    }
+    try {
+      await API.put(`/products/${productId}`, { quantity });
+      await fetchProductsForShop(shopId);
+      setEditedQuantities((prev) => {
+        const updated = { ...prev };
+        delete updated[productId];
+        return updated;
+      });
+    } catch {
+      alert('❌ Failed to update stock');
+    }
+  };
+
+  const handleRemoveProduct = async (productId, shopId) => {
+    const confirmed = window.confirm('Are you sure you want to remove this product?');
+    if (!confirmed) return;
+    try {
+      await API.delete(`/products/${productId}`);
+      await fetchProductsForShop(shopId);
+    } catch {
+      alert('❌ Failed to remove product');
     }
   };
 
@@ -887,10 +922,30 @@ const VendorDashboard = () => {
                             {productsByShop[shop._id].map((p) => (
                               <li key={p._id} className="py-3 px-4 flex justify-between items-center">
                                 <span className="font-medium text-gray-800">{p.name}</span>
-                                <div className="text-right">
-                                  <div className="font-semibold text-gray-800">₹{p.price}</div>
-                                  <div className="text-sm text-gray-600">Qty: {p.quantity}</div>
-                                </div>
+                                 <div className="flex items-center space-x-4">
+                                   <div className="text-right">
+                                     <div className="font-semibold text-gray-800">₹{p.price}</div>
+                                     <div className="text-sm text-gray-600">Qty: {p.quantity}</div>
+                                   </div>
+                                   <input
+                                     type="number"
+                                     className="p-2 border border-gray-300 rounded-lg shadow-sm w-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors duration-200"
+                                     value={editedQuantities[p._id] ?? p.quantity}
+                                     onChange={(e) => handleQuantityInputChange(p._id, e.target.value)}
+                                   />
+                                   <button
+                                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg shadow-sm transition-colors duration-200 font-medium text-sm"
+                                     onClick={() => handleUpdateProductStock(p._id, shop._id)}
+                                   >
+                                     Update Stock
+                                   </button>
+                                   <button
+                                     className="text-red-600 hover:text-red-800 font-medium hover:underline transition-colors duration-200 text-sm"
+                                     onClick={() => handleRemoveProduct(p._id, shop._id)}
+                                   >
+                                     Remove
+                                   </button>
+                                 </div>
                               </li>
                             ))}
                           </ul>
