@@ -8,6 +8,17 @@ const cashierSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Shop',
     required: true
+  },
+  approved: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  approvedAt: {
+    type: Date
   }
 });
 

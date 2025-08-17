@@ -40,7 +40,7 @@ const CashierDashboard = () => {
   const [message, setMessage] = useState('');
   const [invoiceUrl, setInvoiceUrl] = useState('');
   const [search, setSearch] = useState('');
-  const [customer, setCustomer] = useState({ name: '', phone: '' });
+  const [customer, setCustomer] = useState({ name: '', phone: '', email: '' });
   const [billHistory, setBillHistory] = useState([]);
   const [showAllBills, setShowAllBills] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -135,6 +135,7 @@ const CashierDashboard = () => {
         items: cart,
         customerName: customer.name,
         customerPhone: customer.phone,
+        customerEmail: customer.email,
         paymentType
       });
 
@@ -143,7 +144,7 @@ const CashierDashboard = () => {
       const backendBase = import.meta.env.VITE_BACKEND_URL;
       setInvoiceUrl(`${backendBase}${res.data.pdfPath}`);
       setCart([]);
-      setCustomer({ name: '', phone: '' });
+      setCustomer({ name: '', phone: '', email: '' });
       fetchProducts();
       fetchBillHistory();
     } catch (err) {
@@ -500,7 +501,7 @@ const CashierDashboard = () => {
                 </h2>
 
                 {/* Customer Information */}
-                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
                   <div>
                     <label htmlFor="customerName" className="block text-sm font-medium text-gray-700 mb-2">
                       Customer Name *
@@ -532,6 +533,19 @@ const CashierDashboard = () => {
                           phone: e.target.value.replace(/\D/g, '')
                         })
                       }
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      id="customerEmail"
+                      type="email"
+                      placeholder="Enter customer email (optional)"
+                      className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors duration-200"
+                      value={customer.email}
+                      onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
                     />
                   </div>
                 </div>

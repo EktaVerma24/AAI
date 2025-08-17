@@ -17,7 +17,11 @@ import {
 const AdminDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [vendors, setVendors] = useState([]);
+  const [pendingShops, setPendingShops] = useState([]);
+  const [pendingCashiers, setPendingCashiers] = useState([]);
   const [loadingVendorId, setLoadingVendorId] = useState(null);
+  const [loadingShopId, setLoadingShopId] = useState(null);
+  const [loadingCashierId, setLoadingCashierId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -25,6 +29,8 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboard();
     fetchVendors();
+    fetchPendingShops();
+    fetchPendingCashiers();
   }, []);
 
   useEffect(() => {
@@ -51,6 +57,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchPendingShops = async () => {
+    try {
+      const res = await API.get('/admin/pending-shops');
+      setPendingShops(res.data);
+    } catch (err) {
+      console.error('Failed to fetch pending shops:', err);
+    }
+  };
+
+  const fetchPendingCashiers = async () => {
+    try {
+      const res = await API.get('/admin/pending-cashiers');
+      setPendingCashiers(res.data);
+    } catch (err) {
+      console.error('Failed to fetch pending cashiers:', err);
+    }
+  };
+
   const approveVendor = async (id) => {
     try {
       setLoadingVendorId(id);
@@ -74,6 +98,58 @@ const AdminDashboard = () => {
       alert('Failed to reject vendor');
     } finally {
       setLoadingVendorId(null);
+    }
+  };
+
+  const approveShop = async (id) => {
+    try {
+      setLoadingShopId(id);
+      await API.patch(`/api/shops/${id}/approve`);
+      await fetchPendingShops();
+      await fetchDashboard();
+    } catch (err) {
+      alert('Failed to approve shop');
+    } finally {
+      setLoadingShopId(null);
+    }
+  };
+
+  const rejectShop = async (id) => {
+    try {
+      setLoadingShopId(id);
+      await API.delete(`/api/shops/${id}`);
+      await fetchPendingShops();
+      await fetchDashboard();
+    } catch (err) {
+      alert('Failed to reject shop');
+    } finally {
+      setLoadingShopId(null);
+    }
+  };
+
+  const approveCashier = async (id) => {
+    try {
+      setLoadingCashierId(id);
+      await API.patch(`/api/cashiers/${id}/approve`);
+      await fetchPendingCashiers();
+      await fetchDashboard();
+    } catch (err) {
+      alert('Failed to approve cashier');
+    } finally {
+      setLoadingCashierId(null);
+    }
+  };
+
+  const rejectCashier = async (id) => {
+    try {
+      setLoadingCashierId(id);
+      await API.delete(`/api/cashiers/${id}/reject`);
+      await fetchPendingCashiers();
+      await fetchDashboard();
+    } catch (err) {
+      alert('Failed to reject cashier');
+    } finally {
+      setLoadingCashierId(null);
     }
   };
 
@@ -153,6 +229,7 @@ const AdminDashboard = () => {
           <TabButton id="overview" label="Overview" active={activeTab === 'overview'} />
           <TabButton id="vendors" label="Vendor Management" active={activeTab === 'vendors'} />
           <TabButton id="manageVendors" label="Manage Vendors & Shops" active={activeTab === 'manageVendors'} />
+          <TabButton id="pendingApprovals" label="Pending Approvals" active={activeTab === 'pendingApprovals'} />
           <TabButton id="analytics" label="Analytics" active={activeTab === 'analytics'} />
         </div>
       </div>
@@ -226,28 +303,46 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
-                <div className="space-y-3">
-                  <button 
-                    className="w-full text-left p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors duration-200"
-                    onClick={() => setActiveTab('manageVendors')}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">Manage Vendors & Shops</p>
-                        <p className="text-sm text-gray-500">View vendors and their shops</p>
-                      </div>
+                          {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+              <div className="space-y-3">
+                <button 
+                  className="w-full text-left p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors duration-200"
+                  onClick={() => setActiveTab('manageVendors')}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
                     </div>
-                  </button>
-                </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Manage Vendors & Shops</p>
+                      <p className="text-sm text-gray-500">View vendors and their shops</p>
+                    </div>
+                  </div>
+                </button>
+                <button 
+                  className="w-full text-left p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors duration-200"
+                  onClick={() => setActiveTab('pendingApprovals')}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Pending Approvals</p>
+                      <p className="text-sm text-gray-500">
+                        {dashboard.pendingShops + dashboard.pendingCashiers} items need approval
+                      </p>
+                    </div>
+                  </div>
+                </button>
               </div>
+            </div>
             </div>
           </div>
         )}
@@ -688,6 +783,146 @@ const AdminDashboard = () => {
             </div>
           </div>
                  )}
+
+        {activeTab === 'pendingApprovals' && (
+          <div className="space-y-8">
+            {/* Pending Shops */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Pending Shop Approvals</h2>
+                <span className="text-sm text-gray-500">{pendingShops.length} pending shops</span>
+              </div>
+              
+              {pendingShops.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <p className="text-sm">No pending shop approvals</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingShops.map((shop) => (
+                    <div key={shop._id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-lg">
+                              {shop.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{shop.name}</h3>
+                            <p className="text-sm text-gray-600">📍 {shop.location}</p>
+                            <p className="text-sm text-gray-500">Vendor: {shop.vendorId?.companyName || shop.vendorId?.name || 'Unknown'}</p>
+                            <p className="text-xs text-gray-400">Created: {new Date(shop.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => approveShop(shop._id)}
+                            disabled={loadingShopId === shop._id}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            {loadingShopId === shop._id ? (
+                              <svg className="animate-spin -ml-1 mr-1.5 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            ) : (
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                            {loadingShopId === shop._id ? 'Approving...' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => rejectShop(shop._id)}
+                            disabled={loadingShopId === shop._id}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Pending Cashiers */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Pending Cashier Approvals</h2>
+                <span className="text-sm text-gray-500">{pendingCashiers.length} pending cashiers</span>
+              </div>
+              
+              {pendingCashiers.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <p className="text-sm">No pending cashier approvals</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingCashiers.map((cashier) => (
+                    <div key={cashier._id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                            <span className="text-purple-600 font-semibold text-lg">
+                              {cashier.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{cashier.name}</h3>
+                            <p className="text-sm text-gray-600">📧 {cashier.email}</p>
+                            <p className="text-sm text-gray-500">Shop: {cashier.shopId?.name || 'Unknown'}</p>
+                            <p className="text-xs text-gray-400">Location: {cashier.shopId?.location || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => approveCashier(cashier._id)}
+                            disabled={loadingCashierId === cashier._id}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            {loadingCashierId === cashier._id ? (
+                              <svg className="animate-spin -ml-1 mr-1.5 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            ) : (
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                            {loadingCashierId === cashier._id ? 'Approving...' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => rejectCashier(cashier._id)}
+                            disabled={loadingCashierId === cashier._id}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
          {/* Vendor Details Modal */}
          {showVendorModal && selectedVendor && (

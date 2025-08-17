@@ -17,7 +17,7 @@ const formatTimestamp = (date) =>
 
 // ✅ POST /api/billing — Generate bill and PDF
 router.post('/', auth('cashier'), async (req, res) => {
-  const { items, customerName, customerPhone } = req.body;
+  const { items, customerName, customerPhone, customerEmail } = req.body;
 
   try {
     let total = 0;
@@ -66,6 +66,7 @@ Airport Inventory System`.trim();
       total,
       customerName,
       customerPhone,
+      customerEmail,
       cashierId: req.user.id,
       shopId,
       createdAt: new Date(),
@@ -168,7 +169,8 @@ Airport Inventory System`.trim();
     doc.fontSize(12).fillColor('#111827').font('Helvetica-Bold')
       .text(customerName || 'Walk-in Customer', 50, 270)
       .fontSize(10).font('Helvetica').fillColor('#374151')
-      .text(`Phone: ${customerPhone || 'N/A'}`, 50, 290);
+      .text(`Phone: ${customerPhone || 'N/A'}`, 50, 290)
+      .text(`Email: ${customerEmail || 'N/A'}`, 50, 305);
 
     // Table Header with enhanced styling
     doc.moveTo(50, 330).lineTo(550, 330).stroke();
@@ -271,12 +273,42 @@ Airport Inventory System`.trim();
 
     doc.end();
 
+    // Send email to customer if email is provided
+    if (customerEmail) {
+      try {
+        const subject = `Invoice #${bill._id} - ${shop.name}`;
+        const message = `
+Dear ${customerName || 'Valued Customer'},
+
+Thank you for your purchase! Your invoice has been generated successfully.
+
+Invoice Details:
+- Invoice Number: ${bill._id}
+- Shop: ${shop.name}
+- Location: ${shop.location}
+- Total Amount: ₹${total}
+- Date: ${new Date(bill.createdAt).toLocaleDateString()}
+
+Your invoice is attached to this email.
+
+Best regards,
+${shop.name}
+Airport Inventory Management System`.trim();
+
+        await sendEmail(customerEmail, subject, message, invoicePath);
+      } catch (emailError) {
+        console.error('Failed to send email:', emailError);
+        // Continue with response even if email fails
+      }
+    }
+
     // Wait a moment for PDF to be written
     setTimeout(() => {
       res.status(200).json({
-        msg: '✅ Billing successful. Invoice generated.',
+        msg: customerEmail ? '✅ Billing successful. Invoice generated and email sent.' : '✅ Billing successful. Invoice generated.',
         billId: bill._id,
         pdfPath: invoiceURL,
+        emailSent: !!customerEmail,
       });
     }, 100);
   } catch (err) {

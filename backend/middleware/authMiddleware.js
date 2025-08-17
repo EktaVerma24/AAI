@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
+const Vendor = require('../models/vendorModel');
+const Cashier = require('../models/cashierModel');
 
 const auth = (requiredRole) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ msg: "No token provided" });
 
@@ -10,6 +12,20 @@ const auth = (requiredRole) => {
       if (requiredRole && decoded.role !== requiredRole) {
         return res.status(403).json({ msg: "Access denied: unauthorized role" });
       }
+
+      // Check approval status for vendors and cashiers
+      if (decoded.role === 'vendor') {
+        const vendor = await Vendor.findById(decoded.id);
+        if (!vendor || !vendor.approved) {
+          return res.status(403).json({ msg: "Access denied: vendor not approved" });
+        }
+      } else if (decoded.role === 'cashier') {
+        const cashier = await Cashier.findById(decoded.id);
+        if (!cashier || !cashier.approved) {
+          return res.status(403).json({ msg: "Access denied: cashier not approved" });
+        }
+      }
+
       req.user = decoded;
       next();
     } catch (err) {
@@ -19,7 +35,7 @@ const auth = (requiredRole) => {
 };
 
 const multiRoleAuth = (roles = []) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ msg: "No token provided" });
 
@@ -28,6 +44,20 @@ const multiRoleAuth = (roles = []) => {
       if (!roles.includes(decoded.role)) {
         return res.status(403).json({ msg: "Access denied: role not allowed" });
       }
+
+      // Check approval status for vendors and cashiers
+      if (decoded.role === 'vendor') {
+        const vendor = await Vendor.findById(decoded.id);
+        if (!vendor || !vendor.approved) {
+          return res.status(403).json({ msg: "Access denied: vendor not approved" });
+        }
+      } else if (decoded.role === 'cashier') {
+        const cashier = await Cashier.findById(decoded.id);
+        if (!cashier || !cashier.approved) {
+          return res.status(403).json({ msg: "Access denied: cashier not approved" });
+        }
+      }
+
       req.user = decoded;
       next();
     } catch (err) {

@@ -14,6 +14,7 @@ const billSchema = new mongoose.Schema({
   total: Number,
   customerName: String,
   customerPhone: String,
+  customerEmail: String, // Added customer email field
   shopId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Shop'

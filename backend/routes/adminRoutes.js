@@ -48,6 +48,8 @@ router.get('/dashboard', auth('admin'), async (req, res) => {
     const shops = await Shop.find({});
     const cashiers = await Cashier.find({});
     const products = await Product.find({});
+    const pendingShops = await Shop.find({ approved: false }).countDocuments();
+    const pendingCashiers = await Cashier.find({ approved: false }).countDocuments();
 
     const recentBills = await Bill.find({})
       .sort({ createdAt: -1 })
@@ -106,7 +108,9 @@ router.get('/dashboard', auth('admin'), async (req, res) => {
       products: products.length,
       productsList: products,
       recentBills,
-      monthlySales
+      monthlySales,
+      pendingShops,
+      pendingCashiers
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -159,6 +163,30 @@ router.delete('/vendors/:id', auth('admin'), async (req, res) => {
     });
 
     res.json({ msg: 'Vendor rejected and email sent' });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Get pending shops for approval
+router.get('/pending-shops', auth('admin'), async (req, res) => {
+  try {
+    const shops = await Shop.find({ approved: false })
+      .populate('vendorId', 'companyName name email')
+      .populate('approvedBy', 'name');
+    res.json(shops);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Get pending cashiers for approval
+router.get('/pending-cashiers', auth('admin'), async (req, res) => {
+  try {
+    const cashiers = await Cashier.find({ approved: false })
+      .populate('shopId', 'name location')
+      .populate('approvedBy', 'name');
+    res.json(cashiers);
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }

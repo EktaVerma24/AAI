@@ -71,6 +71,90 @@ router.get('/', auth('vendor'), async (req, res) => {
   }
 });
 
+// ✅ Get Pending Shops for Admin
+router.get('/pending', auth('admin'), async (req, res) => {
+  try {
+    const shops = await Shop.find({ approved: false })
+      .populate('vendorId', 'companyName name email')
+      .populate('approvedBy', 'name');
+    res.json(shops);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Approve Shop by Admin
+router.patch('/:id/approve', auth('admin'), async (req, res) => {
+  try {
+    const shop = await Shop.findByIdAndUpdate(
+      req.params.id,
+      { 
+        approved: true, 
+        approvedBy: req.user.id,
+        approvedAt: new Date()
+      },
+      { new: true }
+    ).populate('vendorId', 'companyName name email');
+
+    if (!shop) {
+      return res.status(404).json({ msg: 'Shop not found' });
+    }
+
+    // Send email notification to vendor
+    const subject = `Shop Approval - ${shop.name}`;
+    const message = `
+Dear ${shop.vendorId.companyName || shop.vendorId.name || 'Vendor'},
+
+Your shop "${shop.name}" has been approved by the admin.
+
+Shop Details:
+- Name: ${shop.name}
+- Location: ${shop.location}
+- Approved Date: ${new Date().toLocaleDateString()}
+
+You can now add cashiers and products to this shop.
+
+Best regards,
+Airport Inventory Management System`.trim();
+
+    await sendEmail(shop.vendorId.email, subject, message);
+
+    res.json({ msg: 'Shop approved and email sent', shop });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Reject Shop by Admin
+router.delete('/:id', auth('admin'), async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.params.id).populate('vendorId', 'companyName name email');
+    if (!shop) {
+      return res.status(404).json({ msg: 'Shop not found' });
+    }
+
+    await Shop.findByIdAndDelete(req.params.id);
+
+    // Send rejection email to vendor
+    const subject = `Shop Rejection - ${shop.name}`;
+    const message = `
+Dear ${shop.vendorId.companyName || shop.vendorId.name || 'Vendor'},
+
+Your shop "${shop.name}" has been rejected by the admin.
+
+Please contact the admin for more information about the rejection.
+
+Best regards,
+Airport Inventory Management System`.trim();
+
+    await sendEmail(shop.vendorId.email, subject, message);
+
+    res.json({ msg: 'Shop rejected and email sent' });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
 // ✅ Serve UPI QR Code Images
 router.get('/qr-code/:filename', (req, res) => {
   console.log(req.params);

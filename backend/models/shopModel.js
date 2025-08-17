@@ -14,6 +14,17 @@ const shopSchema = new mongoose.Schema({
   upiQrCode: {
     type: String,
     default: null
+  },
+  approved: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  approvedAt: {
+    type: Date
   }
 });
 
