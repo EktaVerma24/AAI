@@ -98,6 +98,56 @@ router.get('/dashboard', auth('admin'), async (req, res) => {
       },
       { $sort: { '_id.year': 1, '_id.month': 1 } }
     ]);
+    
+
+        // 🔥 Daily sales for the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const dailySales = await Bill.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          totalSales: { $sum: '$total' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // 🔥 Shop-wise daily sales
+    const shopDailySales = await Bill.aggregate([
+      {
+        $lookup: {
+          from: 'shops',
+          localField: 'shopId',
+          foreignField: '_id',
+          as: 'shop'
+        }
+      },
+      { $unwind: '$shop' },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' },
+            shopId: '$shop._id',
+            shopName: '$shop.name'
+          },
+          totalSales: { $sum: '$total' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.shopName': 1 } }
+    ]);
 
     res.json({
       vendors: vendors.length,
@@ -111,7 +161,9 @@ router.get('/dashboard', auth('admin'), async (req, res) => {
       recentBills,
       monthlySales,
       pendingShops,
-      pendingCashiers
+      pendingCashiers,
+      dailySales,
+      shopDailySales
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });

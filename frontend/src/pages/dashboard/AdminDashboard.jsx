@@ -26,6 +26,10 @@ const AdminDashboard = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
 
+   // New state for filters
+   const [selectedShop, setSelectedShop] = useState('');
+   const [selectedDate, setSelectedDate] = useState('');
+
   useEffect(() => {
     fetchDashboard();
     fetchVendors();
@@ -36,12 +40,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     // console.log('Active tab changed to:', activeTab);
     // console.log('Current dashboard state:', dashboard);
-  }, [activeTab, dashboard]);
+  }, [activeTab,vendors, dashboard]);
 
   const fetchDashboard = async () => {
     try {
       const res = await API.get('/admin/dashboard');
-      // console.log('Dashboard data received:', res.data);
+      console.log('Dashboard data received:', res.data);
       setDashboard(res.data);
     } catch (err) {
       console.error('Failed to fetch admin dashboard:', err);
@@ -198,6 +202,101 @@ const AdminDashboard = () => {
       </div>
     );
   }
+  // Data for the daily sales chart
+  const dailySalesChartData = dashboard.dailySales
+    ? dashboard.dailySales.map(day => ({
+        date: `${day._id.day}/${day._id.month}`,
+        sales: day.totalSales
+      }))
+    : [];
+  
+  // Data for the monthly sales chart
+  const monthlySalesData = dashboard.monthlySales.map((s) => ({
+    name: `${s._id.vendorName} (${s._id.month}/${s._id.year})`,
+    total: s.totalSales,
+  }));
+  
+  // Group daily sales by shop
+  const shopDailySales = dashboard.shopDailySales || [];
+  const shopsWithDailySales = shopDailySales.reduce((acc, sale) => {
+    const shopId = sale._id.shopId;
+    const shopName = sale._id.shopName;
+    const date = new Date(sale._id.year, sale._id.month - 1, sale._id.day).toLocaleDateString();
+    
+    if (!acc[shopId]) {
+      acc[shopId] = { name: shopName, data: [] };
+    }
+    acc[shopId].data.push({ date, total: sale.totalSales });
+    return acc;
+  }, {});
+
+  // --- NEW FILTERING LOGIC FOR SHOP-WISE DAILY ANALYSIS ---
+  let filteredShopDailySalesData = [];
+  if (selectedShop && selectedDate) {
+    const selectedDateObj = new Date(selectedDate);
+    const selectedDay = selectedDateObj.getDate();
+    const selectedMonth = selectedDateObj.getMonth() + 1; // Month is 0-indexed
+    const selectedYear = selectedDateObj.getFullYear();
+
+    const saleRecord = dashboard.shopDailySales.find(sale => 
+      sale._id.shopId === selectedShop &&
+      sale._id.day === selectedDay &&
+      sale._id.month === selectedMonth &&
+      sale._id.year === selectedYear
+    );
+
+    if (saleRecord) {
+      filteredShopDailySalesData = [
+        {
+          name: saleRecord._id.shopName,
+          sales: saleRecord.totalSales
+        }
+      ];
+    }
+  }
+
+  // --- FILTERING LOGIC FOR ALL SHOPS COMPARISON CHART ---
+  let allShopsComparisonData = [];
+  if (selectedDate) {
+    const selectedDateObj = new Date(selectedDate);
+    const selectedDay = selectedDateObj.getDate();
+    const selectedMonth = selectedDateObj.getMonth() + 1;
+    const selectedYear = selectedDateObj.getFullYear();
+
+    allShopsComparisonData = dashboard.shopDailySales.filter(sale => 
+      sale._id.day === selectedDay &&
+      sale._id.month === selectedMonth &&
+      sale._id.year === selectedYear
+    ).map(sale => ({
+      name: sale._id.shopName,
+      totalSales: sale.totalSales
+    }));
+  }
+
+  // --- NEW AGGREGATION FOR DAILY SHOP-WISE GROWTH CHART ---
+  let dailyShopGrowthData = [];
+  if (selectedDate) {
+    const selectedDateObj = new Date(selectedDate);
+    const selectedDay = selectedDateObj.getDate();
+    const selectedMonth = selectedDateObj.getMonth() + 1;
+    const selectedYear = selectedDateObj.getFullYear();
+    
+    // Find all sales for the selected date
+    const dailySalesRecords = dashboard.shopDailySales.filter(sale => 
+      sale._id.day === selectedDay &&
+      sale._id.month === selectedMonth &&
+      sale._id.year === selectedYear
+    );
+    
+    // Format the data for the chart
+    if (dailySalesRecords.length > 0) {
+      dailyShopGrowthData = [{ date: `${selectedDay}/${selectedMonth}` }];
+      dailySalesRecords.forEach(sale => {
+        dailyShopGrowthData[0][sale._id.shopName] = sale.totalSales;
+      });
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -359,7 +458,7 @@ const AdminDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Address</th>
                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -381,7 +480,7 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         </td>
-                                                 <td className="px-6 py-4">
+                           <td className="px-6 py-4">
                            <div className="text-sm text-gray-900">{vendor.email}</div>
                            <div className="text-sm text-gray-500">{vendor.phoneNumber || vendor.phone || 'No phone'}</div>
                            {vendor.address && (
@@ -677,9 +776,102 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'analytics' && (
+{activeTab === 'analytics' && (
           <div className="space-y-8">
-            {/* Sales Chart */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Analytics</h2>
+                  <p className="text-sm text-gray-500 mt-1">Filter data to gain specific insights.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Shop Filter */}
+                  <div className="flex-1">
+                    <label htmlFor="shop-filter" className="block text-sm font-medium text-gray-700 mb-1">Select Shop</label>
+                    <select
+                      id="shop-filter"
+                      className="w-full p-2 border border-gray-300 rounded-lg shadow-sm"
+                      value={selectedShop}
+                      onChange={(e) => setSelectedShop(e.target.value)}
+                    >
+                      <option value="">All Shops</option>
+                      {dashboard.shopsList && dashboard.shopsList.map(shop => (
+                        <option key={shop._id} value={shop._id}>{shop.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Date Picker */}
+                  <div className="flex-1">
+                    <label htmlFor="date-picker" className="block text-sm font-medium text-gray-700 mb-1">Select Date</label>
+                    <input
+                      id="date-picker"
+                      type="date"
+                      className="w-full p-2 border border-gray-300 rounded-lg shadow-sm"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Sales Analysis Chart */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Day-wise Sales Analysis</h2>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-indigo-600 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Daily Sales</span>
+                  </div>
+                </div>
+              </div>
+              {dailySalesChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart
+                    data={dailySalesChartData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `₹${value}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value) => [`₹${value}`, 'Sales']}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="sales"
+                      stroke="#6366F1"
+                      fill="#818CF8"
+                      strokeWidth={2}
+                      dot={{ stroke: '#6366F1', strokeWidth: 2, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  <p>No daily sales data available.</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Monthly Sales Chart */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Monthly Sales Performance</h2>
@@ -690,44 +882,196 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart
-                  data={dashboard.monthlySales.map((s) => ({
-                    name: `${s._id.vendorName} (${s._id.month}/${s._id.year})`,
-                    total: s.totalSales
-                  }))}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `₹${value}`}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                    formatter={(value) => [`₹${value}`, 'Sales']}
-                  />
-                  <Bar 
-                    dataKey="total" 
-                    fill="#4F46E5" 
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {monthlySalesData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart
+                    data={monthlySalesData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `₹${value}`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value) => [`₹${value}`, 'Sales']}
+                    />
+                    <Bar
+                      dataKey="total"
+                      fill="#4F46E5"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={50}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  <p>No monthly sales data available.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Shop-wise Daily Sales Analysis */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+                Shop-wise Daily Sales Analysis
+              </h2>
+              {selectedShop && selectedDate ? (
+                filteredShopDailySalesData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart
+                      data={filteredShopDailySalesData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `₹${value}`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                        formatter={(value) => [`₹${value}`, 'Sales']}
+                      />
+                      <Bar
+                        dataKey="sales"
+                        fill="#10B981"
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={50}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No sales data found for the selected shop and date.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Please select a date and a shop to view specific daily sales.</p>
+                </div>
+              )}
+            </div>
+            
+            {/* New: All Shops Daily Sales Comparison Chart */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">All Shops Daily Sales Comparison</h2>
+              {selectedDate ? (
+                allShopsComparisonData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={400}>
+                        <BarChart
+                            data={allShopsComparisonData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis
+                                dataKey="name"
+                                tick={{ fontSize: 12 }}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                tick={{ fontSize: 12 }}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(value) => `₹${value}`}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                }}
+                                formatter={(value) => [`₹${value}`, 'Daily Sales']}
+                            />
+                            <Bar
+                                dataKey="totalSales"
+                                fill="#8884d8"
+                                radius={[4, 4, 0, 0]}
+                                maxBarSize={50}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No sales data available for the selected date.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Please select a date to view the daily sales comparison of all shops.</p>
+                </div>
+              )}
+            </div>
+
+            {/* New: Day-wise All Shops Growth Analysis Chart */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Day-wise All Shops Growth Analysis</h2>
+              {selectedDate ? (
+                dailyShopGrowthData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={400}>
+                        <LineChart data={dailyShopGrowthData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                }}
+                                formatter={(value, name) => [`₹${value}`, name]}
+                            />
+                            {dashboard.shopsList && dashboard.shopsList.map((shop, index) => (
+                                <Line
+                                    key={shop._id}
+                                    type="monotone"
+                                    dataKey={shop.name}
+                                    stroke={`hsl(${index * 60}, 70%, 50%)`} // Use a color based on the index
+                                    strokeWidth={2}
+                                    dot={{ r: 4 }}
+                                />
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No sales data available for the selected date.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Please select a date to view the day-wise growth analysis of all shops.</p>
+                </div>
+              )}
             </div>
 
             {/* Additional Analytics */}
