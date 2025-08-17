@@ -104,7 +104,7 @@ const AdminDashboard = () => {
   const approveShop = async (id) => {
     try {
       setLoadingShopId(id);
-      await API.patch(`/api/shops/${id}/approve`);
+      await API.patch(`/admin/shops/${id}/approve`);
       await fetchPendingShops();
       await fetchDashboard();
     } catch (err) {
@@ -117,7 +117,7 @@ const AdminDashboard = () => {
   const rejectShop = async (id) => {
     try {
       setLoadingShopId(id);
-      await API.delete(`/api/shops/${id}`);
+      await API.delete(`/admin/shops/${id}`);
       await fetchPendingShops();
       await fetchDashboard();
     } catch (err) {
@@ -130,7 +130,7 @@ const AdminDashboard = () => {
   const approveCashier = async (id) => {
     try {
       setLoadingCashierId(id);
-      await API.patch(`/api/cashiers/${id}/approve`);
+      await API.patch(`/admin/cashiers/${id}/approve`);
       await fetchPendingCashiers();
       await fetchDashboard();
     } catch (err) {
@@ -143,7 +143,7 @@ const AdminDashboard = () => {
   const rejectCashier = async (id) => {
     try {
       setLoadingCashierId(id);
-      await API.delete(`/api/cashiers/${id}/reject`);
+      await API.delete(`/admin/cashiers/${id}/reject`);
       await fetchPendingCashiers();
       await fetchDashboard();
     } catch (err) {

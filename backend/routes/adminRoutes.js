@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const auth = require('../middleware/authMiddleware');
 const nodemailer = require('nodemailer');
+const sendEmail = require('../utils/sendEmails');
 
 const router = express.Router();
 
@@ -187,6 +188,152 @@ router.get('/pending-cashiers', auth('admin'), async (req, res) => {
       .populate('shopId', 'name location')
       .populate('approvedBy', 'name');
     res.json(cashiers);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Approve Shop by Admin
+router.patch('/shops/:id/approve', auth('admin'), async (req, res) => {
+  try {
+    const shop = await Shop.findByIdAndUpdate(
+      req.params.id,
+      { 
+        approved: true, 
+        approvedBy: req.user.id,
+        approvedAt: new Date()
+      },
+      { new: true }
+    ).populate('vendorId', 'companyName name email');
+
+    if (!shop) {
+      return res.status(404).json({ msg: 'Shop not found' });
+    }
+
+    // Send email notification to vendor
+    const subject = `Shop Approved - ${shop.name}`;
+    const message = `
+Dear ${shop.vendorId.companyName || shop.vendorId.name || 'Vendor'},
+
+Your shop "${shop.name}" has been approved by the admin.
+
+Shop Details:
+- Shop Name: ${shop.name}
+- Location: ${shop.location}
+- Approved Date: ${new Date().toLocaleDateString()}
+
+You can now manage your shop and add cashiers.
+
+Best regards,
+Airport Inventory Management System`.trim();
+
+    await sendEmail(shop.vendorId.email, subject, message);
+
+    res.json({ msg: 'Shop approved and email sent', shop });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Reject Shop by Admin
+router.delete('/shops/:id', auth('admin'), async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.params.id).populate('vendorId', 'companyName name email');
+    if (!shop) {
+      return res.status(404).json({ msg: 'Shop not found' });
+    }
+
+    await Shop.findByIdAndDelete(req.params.id);
+
+    // Send rejection email to vendor
+    const subject = `Shop Rejected - ${shop.name}`;
+    const message = `
+Dear ${shop.vendorId.companyName || shop.vendorId.name || 'Vendor'},
+
+Your shop "${shop.name}" has been rejected by the admin.
+
+Please contact the admin for more information about the rejection.
+
+Best regards,
+Airport Inventory Management System`.trim();
+
+    await sendEmail(shop.vendorId.email, subject, message);
+
+    res.json({ msg: 'Shop rejected and email sent' });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Approve Cashier by Admin
+router.patch('/cashiers/:id/approve', auth('admin'), async (req, res) => {
+  try {
+    const cashier = await Cashier.findByIdAndUpdate(
+      req.params.id,
+      { 
+        approved: true, 
+        approvedBy: req.user.id,
+        approvedAt: new Date()
+      },
+      { new: true }
+    ).populate('shopId', 'name location');
+
+    if (!cashier) {
+      return res.status(404).json({ msg: 'Cashier not found' });
+    }
+
+    // Send email notification to cashier
+    const subject = `Cashier Account Approved - ${cashier.shopId.name}`;
+    const message = `
+Dear ${cashier.name},
+
+Your cashier account has been approved by the admin.
+
+Account Details:
+- Name: ${cashier.name}
+- Email: ${cashier.email}
+- Shop: ${cashier.shopId.name}
+- Location: ${cashier.shopId.location}
+- Approved Date: ${new Date().toLocaleDateString()}
+
+You can now log in to your cashier dashboard.
+
+Best regards,
+Airport Inventory Management System`.trim();
+
+    await sendEmail(cashier.email, subject, message);
+
+    res.json({ msg: 'Cashier approved and email sent', cashier });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ✅ Reject Cashier by Admin
+router.delete('/cashiers/:id/reject', auth('admin'), async (req, res) => {
+  try {
+    const cashier = await Cashier.findById(req.params.id).populate('shopId', 'name location');
+    if (!cashier) {
+      return res.status(404).json({ msg: 'Cashier not found' });
+    }
+
+    await Cashier.findByIdAndDelete(req.params.id);
+
+    // Send rejection email to cashier
+    const subject = `Cashier Account Rejected - ${cashier.shopId.name}`;
+    const message = `
+Dear ${cashier.name},
+
+Your cashier account has been rejected by the admin.
+
+Please contact the admin for more information about the rejection.
+
+Best regards,
+Airport Inventory Management System`.trim();
+
+    await sendEmail(cashier.email, subject, message);
+
+    res.json({ msg: 'Cashier rejected and email sent' });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }

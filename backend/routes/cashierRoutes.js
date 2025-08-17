@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const Cashier = require('../models/cashierModel');
 const auth = require('../middleware/authMiddleware');
+const sendEmail = require('../utils/sendEmails');
 
 // ✅ Create Cashier under a shop
 router.post('/', auth('vendor'), async (req, res) => {
